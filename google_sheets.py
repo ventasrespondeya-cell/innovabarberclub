@@ -9,11 +9,15 @@ class GoogleSheetsManager:
         
         # 1. Intentar cargar desde los Secrets de Streamlit Cloud
         if "gcp_service_account" in st.secrets:
+            secret_dict = dict(st.secrets["gcp_service_account"])
+            if "private_key" in secret_dict:
+                secret_dict["private_key"] = secret_dict["private_key"].replace("\\n", "\n")
+                
             self.creds = Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"], 
+                secret_dict, 
                 scopes=self.scopes
             )
-        # 2. Si no está en la nube, cargar desde el archivo local credentials.json
+        # 2. Si no está en la nube, cargar desde archivo local
         elif os.path.exists(credentials_path):
             self.creds = Credentials.from_service_account_file(
                 credentials_path, 
@@ -25,10 +29,6 @@ class GoogleSheetsManager:
         self.service = build("sheets", "v4", credentials=self.creds)
 
     def agregar_reserva(self, spreadsheet_id, datos):
-        """
-        Agrega una nueva fila de datos a la hoja.
-        datos: Lista con [Fecha, Hora, Nombre, Email, Servicio, Notas]
-        """
         range_name = "'Hoja 1'!A:F"
         
         body = {
