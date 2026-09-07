@@ -8,22 +8,12 @@ class GoogleSheetsManager:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
         
         if "gcp_service_account" in st.secrets:
-            secret_dict = dict(st.secrets["gcp_service_account"])
-            
-            if "private_key" in secret_dict:
-                pk = str(secret_dict["private_key"])
-                pk = pk.replace("\\\\n", "\n").replace("\\n", "\n")
-                pk = pk.strip()
-                
-                if not "-----BEGIN PRIVATE KEY-----" in pk:
-                    pk = "-----BEGIN PRIVATE KEY-----\n" + pk
-                if not "-----END PRIVATE KEY-----" in pk:
-                    pk = pk + "\n-----END PRIVATE KEY-----"
-                
-                secret_dict["private_key"] = pk
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            if "private_key" in creds_dict:
+                creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
                 
             self.creds = Credentials.from_service_account_info(
-                secret_dict, 
+                creds_dict, 
                 scopes=scopes
             )
         elif os.path.exists(credentials_path):
