@@ -10,11 +10,16 @@ class GoogleCalendarManager:
         
         # 1. Intentar cargar desde los Secrets de Streamlit Cloud
         if "gcp_service_account" in st.secrets:
+            # Forzamos la limpieza de saltos de línea si se pegaron mal
+            secret_dict = dict(st.secrets["gcp_service_account"])
+            if "private_key" in secret_dict:
+                secret_dict["private_key"] = secret_dict["private_key"].replace("\\n", "\n")
+                
             self.creds = Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"], 
+                secret_dict, 
                 scopes=self.scopes
             )
-        # 2. Si no está en la nube, cargar desde el archivo local credentials.json
+        # 2. Si no está en la nube, cargar desde archivo local
         elif os.path.exists(credentials_path):
             self.creds = Credentials.from_service_account_file(
                 credentials_path, 
@@ -26,7 +31,6 @@ class GoogleCalendarManager:
         self.service = build("calendar", "v3", credentials=self.creds)
 
     def crear_evento(self, calendar_id, resumen, descripcion, fecha_inicio):
-        # Duración predeterminada de la cita: 1 hora
         fecha_fin = fecha_inicio + datetime.timedelta(hours=1)
         
         evento = {
@@ -63,7 +67,6 @@ class GoogleCalendarManager:
         for evento in eventos:
             start = evento['start'].get('dateTime', evento['start'].get('date'))
             if 'T' in start:
-                # Extrae la hora exacta (HH:MM)
                 hora_str = start.split('T')[1][:5]
                 horas_ocupadas.append(hora_str)
 
