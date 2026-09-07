@@ -10,14 +10,19 @@ class GoogleCalendarManager:
         
         if "gcp_service_account" in st.secrets:
             secret_dict = dict(st.secrets["gcp_service_account"])
+            
             if "private_key" in secret_dict:
-                # Limpieza robusta de la llave privada para evitar errores de formato
-                pk = secret_dict["private_key"]
-                pk = pk.replace("\\n", "\n")
-                if not pk.startswith("-----BEGIN PRIVATE KEY-----"):
-                    pk = "-----BEGIN PRIVATE KEY-----\n" + pk.strip()
-                if not pk.endswith("-----END PRIVATE KEY-----"):
-                    pk = pk.strip() + "\n-----END PRIVATE KEY-----"
+                pk = str(secret_dict["private_key"])
+                # Limpieza total y segura de la llave privada para evitar errores PEM
+                pk = pk.replace("\\\\n", "\n").replace("\\n", "\n")
+                pk = pk.strip()
+                
+                # Asegurar cabecera y pie correctos
+                if not "-----BEGIN PRIVATE KEY-----" in pk:
+                    pk = "-----BEGIN PRIVATE KEY-----\n" + pk
+                if not "-----END PRIVATE KEY-----" in pk:
+                    pk = pk + "\n-----END PRIVATE KEY-----"
+                
                 secret_dict["private_key"] = pk
                 
             self.creds = Credentials.from_service_account_info(
