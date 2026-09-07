@@ -1,0 +1,11 @@
+# Archivo de credenciales de Google
+credentials.json
+
+# Archivos locales de Streamlit
+.streamlit/secrets.toml
+
+# Entornos virtuales y caché de Python
+venv/
+.venv/
+__pycache__/
+*.pyc
