@@ -1,11 +1,12 @@
 import streamlit as st
 import datetime
+import re
 from google_calendar import GoogleCalendarManager
 from google_sheets import GoogleSheetsManager
 from email_sender import EmailSender
 
 # ==========================================
-# CONFIGURACIÓN DE TUS DATOS (MANTÉN TUS IDs AQUÍ)
+# CONFIGURACIÓN DE TUS DATOS DE BACKEND
 # ==========================================
 CALENDAR_ID = "dd8ede64704314d1f73f0f3c8be1c94a01f5710a641e3bf37a858fb37d9f4e44@group.calendar.google.com"
 SPREADSHEET_ID = "1jZfdVpdG9WdUpz0gN_dqPLxKFIMjJBHypd2NvbnR-rM"
@@ -18,16 +19,16 @@ sheets_manager = GoogleSheetsManager()
 email_sender = EmailSender(REMITENTE_EMAIL, PASSWORD_EMAIL)
 
 # ==========================================
-# CONFIGURACIÓN VISUAL VIP (INNOVA BARBER CLUB)
+# CONFIGURACIÓN VISUAL VIP
 # ==========================================
 st.set_page_config(
-    page_title="Innova Barber Club | Reservas",
+    page_title="Innova Barber Club | Citas VIP",
     page_icon="💈",
     layout="centered",
     initial_sidebar_state="expanded"
 )
 
-# Inyección de CSS para un estilo oscuro, premium y elegante
+# Inyección de CSS Avanzado
 st.markdown("""
     <style>
     /* Fondo principal y textos */
@@ -36,85 +37,94 @@ st.markdown("""
         color: #FFFFFF;
     }
     
-    /* Títulos con estilo premium */
+    /* Tipografía y encabezados */
     h1, h2, h3 {
-        color: #D4AF37 !important; /* Dorado elegante */
+        color: #D4AF37 !important;
         font-family: 'Helvetica Neue', sans-serif;
+        letter-spacing: 0.5px;
     }
     
-    /* Estilo del contenedor del formulario */
+    /* Contenedor del formulario */
     div[data-testid="stForm"] {
-        background-color: #1A1C23;
+        background-color: #16181E;
         border: 1px solid #D4AF37;
-        border-radius: 10px;
-        padding: 30px;
-        box-shadow: 0px 4px 15px rgba(212, 175, 55, 0.1);
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0px 6px 20px rgba(212, 175, 55, 0.12);
     }
     
-    /* Botón de confirmación (Dorado) */
+    /* Botón Dorado Principal */
     .stButton>button {
-        background-color: #D4AF37;
+        background: linear-gradient(135deg, #D4AF37 0%, #AA820A 100%);
         color: #000000;
-        border-radius: 5px;
-        height: 3.5em;
+        border-radius: 6px;
+        height: 3.6em;
         width: 100%;
         font-weight: 800;
         font-size: 16px;
         border: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #FFDF70;
+        background: linear-gradient(135deg, #FFDF70 0%, #D4AF37 100%);
         color: #000000;
-        transform: scale(1.02);
+        transform: translateY(-2px);
     }
     
-    /* Inputs y selectores */
+    /* Modificación de Inputs */
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea, .stDateInput input {
-        background-color: #262730;
-        color: white;
-        border-radius: 5px;
-        border: 1px solid #4B4B4B;
+        background-color: #21232B;
+        color: #FFFFFF;
+        border-radius: 6px;
+        border: 1px solid #3A3D4A;
+    }
+    .stTextInput input:focus, .stSelectbox div[data-baseweb="select"]:focus {
+        border-color: #D4AF37;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# BARRA LATERAL (INFORMACIÓN DEL NEGOCIO)
+# BARRA LATERAL (DATOS OFICIALES)
 # ==========================================
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: white;'>INNOVA<br><span style='color: #D4AF37;'>BARBER CLUB</span></h2>", unsafe_allow_html=True)
     st.markdown("---")
-    st.write("📍 **Ubicación:**")
-    st.write("*(Reemplaza aquí con la dirección exacta de su perfil de IG)*")
-    st.write("🕒 **Horario de Atención:**")
+    
+    st.markdown("📍 **Ubicación:**")
+    st.write("Av. Francia, C.C. Divina Pastora")
+    st.caption("Barinas, Venezuela")
+    
+    st.markdown("🕒 **Horarios de Atención:**")
     st.write("Lunes a Sábado: 09:00 AM - 07:00 PM")
-    st.write("📱 **Contacto / WhatsApp:**")
-    st.write("+58 (Inserta su número aquí)")
+    
+    st.markdown("📱 **Contacto Directo:**")
+    st.write("0412-0266809")
+    
     st.markdown("---")
-    st.info("💡 Llega 5 minutos antes para disfrutar de un café o bebida de cortesía antes de tu servicio.")
+    st.info("💡 **Cortesía Innova:** Incluye servicio de café, bebida refrescante y Wi-Fi en cada sesión.")
 
 # ==========================================
 # PANTALLA PRINCIPAL
 # ==========================================
-st.markdown("<h1 style='text-align: center;'>💈 AGENDA TU CITA</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #A0A0A0; font-size: 18px;'>Bienvenido a Innova Barber Club. Selecciona tu servicio y asegura tu espacio con nuestros barberos profesionales.</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>💈 RESERVA TU CITA</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #A0A0A0; font-size: 16px;'>Asegura tu turno con nuestros especialistas de estilo. Selección rápida y confirmación al instante.</p>", unsafe_allow_html=True)
 st.write("")
 
-# ==========================================
-# FORMULARIO DE RESERVA
-# ==========================================
+# Formulario de Reserva con Lógica de Validación
 with st.form("form_reserva"):
-    st.markdown("<h3 style='margin-bottom: 20px;'>Tus Datos</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='margin-bottom: 15px;'>1. Información de Contacto</h3>", unsafe_allow_html=True)
     
     col_a, col_b = st.columns(2)
     with col_a:
-        nombre = st.text_input("Nombre y Apellido *")
+        nombre = st.text_input("Nombre y Apellido *", placeholder="Ej. Carlos Pérez")
+        telefono = st.text_input("Número de Teléfono *", placeholder="Ej. 0412-0266809")
     with col_b:
-        email = st.text_input("Correo Electrónico *")
+        email = st.text_input("Correo Electrónico *", placeholder="ejemplo@correo.com")
         
-    st.markdown("<h3 style='margin-top: 20px; margin-bottom: 20px;'>El Servicio</h3>", unsafe_allow_html=True)
-    servicio = st.selectbox("Selecciona tu estilo *", [
+    st.markdown("<h3 style='margin-top: 20px; margin-bottom: 15px;'>2. Detalle del Servicio</h3>", unsafe_allow_html=True)
+    servicio = st.selectbox("Selecciona la experiencia *", [
         "Corte Clásico / Tradicional ($10)", 
         "Fade / Degradado Premium ($12)",
         "Perfilado y Diseño de Barba ($8)", 
@@ -125,9 +135,9 @@ with st.form("form_reserva"):
     
     col1, col2 = st.columns(2)
     with col1:
-        fecha = st.date_input("Día de la cita *", min_value=datetime.date.today())
+        fecha = st.date_input("Día preferido *", min_value=datetime.date.today())
     
-    # Lógica de filtrado de horas ocupadas
+    # Lógica avanzada para filtrado de citas
     todas_las_horas = [datetime.time(h, m) for h in range(9, 19) for m in (0, 30)]
     
     try:
@@ -143,35 +153,44 @@ with st.form("form_reserva"):
     with col2:
         if horas_disponibles:
             hora = st.selectbox(
-                "Hora disponible *", 
+                "Horario disponible *", 
                 horas_disponibles, 
                 format_func=lambda x: x.strftime("%I:%M %p")
             )
         else:
-            st.warning("⚠️ No hay horarios disponibles para este día.")
+            st.warning("⚠️ Sin turnos disponibles para este día.")
             hora = None
         
-    notas = st.text_area("¿Alguna preferencia de barbero o detalle especial? (Opcional)")
+    notas = st.text_area("Notas o preferencias sobre tu corte/barbero (Opcional)")
     
     st.write("")
-    submit_button = st.form_submit_button("RESERVAR MI ESPACIO")
+    submit_button = st.form_submit_button("CONFIRMAR Y AGENDAR CITA")
 
 # ==========================================
-# LÓGICA DE PROCESAMIENTO
+# LÓGICA DE PROCESAMIENTO Y VALIDACIÓN
 # ==========================================
 if submit_button:
+    # Expresiones regulares para validaciones
+    patron_email = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    patron_telefono = r"^(0412|0414|0424|0416|0426)[0-9]{7}$"
+    telefono_limpio = re.sub(r"[\s\-\(\)]", "", telefono)
+
     if not hora:
-        st.error("⚠️ No hay un horario disponible o seleccionado para este día.")
-    elif not nombre or not email:
-        st.error("⚠️ Por favor, completa tu Nombre y Correo Electrónico.")
+        st.error("⚠️ No hay un horario disponible seleccionado para este día.")
+    elif not nombre.strip():
+        st.error("⚠️ Por favor, ingresa tu Nombre y Apellido.")
+    elif not re.match(patron_email, email):
+        st.error("⚠️ Por favor, ingresa un Correo Electrónico válido (ejemplo@dominio.com).")
+    elif not re.match(patron_telefono, telefono_limpio):
+        st.error("⚠️ Ingresa un número de teléfono válido (Ej: 04120266809 o 0412-0266809).")
     else:
-        with st.spinner("Confirmando tu reserva en nuestro sistema..."):
+        with st.spinner("Procesando tu cita en tiempo real..."):
             try:
                 # 1. Crear evento en Google Calendar
                 fecha_hora_combinada = datetime.datetime.combine(fecha, hora)
                 nombre_servicio_corto = servicio.split(' (')[0]
                 resumen_evento = f"Innova: {nombre_servicio_corto} - {nombre}"
-                descripcion_evento = f"Cliente: {nombre}\nEmail: {email}\nNotas: {notas}"
+                descripcion_evento = f"Cliente: {nombre}\nTélf: {telefono_limpio}\nEmail: {email}\nNotas: {notas}"
                 
                 calendar_manager.crear_evento(
                     calendar_id=CALENDAR_ID,
@@ -185,13 +204,14 @@ if submit_button:
                     str(fecha),
                     hora.strftime("%I:%M %p"),
                     nombre,
+                    telefono_limpio,
                     email,
                     servicio,
                     notas
                 ]
                 sheets_manager.agregar_reserva(SPREADSHEET_ID, datos_sheet)
                 
-                # 3. Enviar correo de confirmación
+                # 3. Enviar correo electrónico
                 email_sender.enviar_confirmacion(
                     destinatario=email,
                     nombre_cliente=nombre,
@@ -200,8 +220,18 @@ if submit_button:
                     hora=hora.strftime("%I:%M %p")
                 )
                 
-                st.success(f"✔️ ¡Reserva confirmada! Te esperamos el {fecha} a las {hora.strftime('%I:%M %p')}.")
+                # Mensaje de confirmación VIP en pantalla
                 st.balloons()
+                st.success("🎉 ¡Tu cita ha sido agendada con éxito!")
+                st.markdown(f"""
+                <div style="background-color: #1A2218; border: 1px solid #2E7D32; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                    <p style="margin:0; color: #81C784;"><b>Resumen de Reserva:</b></p>
+                    <p style="margin:5px 0 0 0;">📌 <b>Servicio:</b> {nombre_servicio_corto}<br>
+                    📅 <b>Fecha:</b> {fecha}<br>
+                    ⏰ <b>Hora:</b> {hora.strftime('%I:%M %p')}<br>
+                    📍 <b>Lugar:</b> Av. Francia, C.C. Divina Pastora</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
             except Exception as e:
-                st.error(f"Ocurrió un error de conexión: {e}")
+                st.error(f"Error al procesar la solicitud: {e}")
