@@ -1,41 +1,51 @@
+import os
 import datetime
+import streamlit as st
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 class GoogleCalendarManager:
     def __init__(self, credentials_path="credentials.json"):
-        # Permisos necesarios para gestionar el calendario
-        self.scopes = ['https://www.googleapis.com/auth/calendar']
-        # Autenticación con el archivo de credenciales
-        self.creds = Credentials.from_service_account_file(credentials_path, scopes=self.scopes)
-        self.service = build('calendar', 'v3', credentials=self.creds)
-
-    def crear_evento(self, calendar_id, resumen, descripcion, fecha_inicio, duracion_minutos=30):
-        """
-        Crea un evento en el Google Calendar especificado.
-        fecha_inicio debe ser un objeto datetime.
-        """
-        fecha_fin = fecha_inicio + datetime.timedelta(minutes=duracion_minutos)
+        self.scopes = ["https://www.googleapis.com/auth/calendar"]
         
-        # Formato ISO requerido por la API de Google
+        # 1. Intentar cargar desde los Secrets de Streamlit Cloud
+        if "gcp_service_account" in st.secrets:
+            self.creds = Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"], 
+                scopes=self.scopes
+            )
+        # 2. Si no está en la nube, cargar desde el archivo local credentials.json
+        elif os.path.exists(credentials_path):
+            self.creds = Credentials.from_service_account_file(
+                credentials_path, 
+                scopes=self.scopes
+            )
+        else:
+            raise FileNotFoundError("No se encontraron credenciales válidas en Secrets ni en credentials.json")
+
+        self.service = build("calendar", "v3", credentials=self.creds)
+
+    def crear_evento(self, calendar_id, resumen, descripcion, fecha_inicio):
+        # Duración predeterminada de la cita: 1 hora
+        fecha_fin = fecha_inicio + datetime.timedelta(hours=1)
+        
         evento = {
             'summary': resumen,
             'description': descripcion,
             'start': {
                 'dateTime': fecha_inicio.isoformat(),
-                'timeZone': 'America/Caracas', # Cambia a tu zona horaria si es diferente
+                'timeZone': 'America/Caracas', 
             },
             'end': {
                 'dateTime': fecha_fin.isoformat(),
                 'timeZone': 'America/Caracas',
             },
         }
-
-        # Insertar evento en el calendario
+        
         evento_creado = self.service.events().insert(calendarId=calendar_id, body=evento).execute()
-        return evento_creado.get('htmlLink')
+        return evento_creado
+
     def obtener_eventos_del_dia(self, calendar_id, fecha):
-        """Obtiene todas las horas ocupadas de un día específico."""
         inicio_dia = datetime.datetime.combine(fecha, datetime.time.min).isoformat() + 'Z'
         fin_dia = datetime.datetime.combine(fecha, datetime.time.max).isoformat() + 'Z'
 
