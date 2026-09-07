@@ -8,18 +8,22 @@ class GoogleCalendarManager:
     def __init__(self, credentials_path="credentials.json"):
         self.scopes = ["https://www.googleapis.com/auth/calendar"]
         
-        # 1. Intentar cargar desde los Secrets de Streamlit Cloud
         if "gcp_service_account" in st.secrets:
-            # Forzamos la limpieza de saltos de línea si se pegaron mal
             secret_dict = dict(st.secrets["gcp_service_account"])
             if "private_key" in secret_dict:
-                secret_dict["private_key"] = secret_dict["private_key"].replace("\\n", "\n")
+                # Limpieza robusta de la llave privada para evitar errores de formato
+                pk = secret_dict["private_key"]
+                pk = pk.replace("\\n", "\n")
+                if not pk.startswith("-----BEGIN PRIVATE KEY-----"):
+                    pk = "-----BEGIN PRIVATE KEY-----\n" + pk.strip()
+                if not pk.endswith("-----END PRIVATE KEY-----"):
+                    pk = pk.strip() + "\n-----END PRIVATE KEY-----"
+                secret_dict["private_key"] = pk
                 
             self.creds = Credentials.from_service_account_info(
                 secret_dict, 
                 scopes=self.scopes
             )
-        # 2. Si no está en la nube, cargar desde archivo local
         elif os.path.exists(credentials_path):
             self.creds = Credentials.from_service_account_file(
                 credentials_path, 
