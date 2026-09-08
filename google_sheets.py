@@ -1,57 +1,47 @@
 import os
+import json
 import streamlit as st
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-def reconstruir_llave_pem(key: str) -> str:
-    """
-    Destruye el formato defectuoso y reconstruye la llave privada 
-    asegurando el formato PEM perfecto (64 caracteres por línea).
-    """
-    if not key:
-        return key
-        
-    header = "-----BEGIN PRIVATE KEY-----"
-    footer = "-----END PRIVATE KEY-----"
-    
-    # Unificar todo a una sola línea eliminando cualquier tipo de salto
-    key_plana = str(key).replace("\\\\n", " ").replace("\\n", " ").replace("\n", " ")
-    
-    if header in key_plana and footer in key_plana:
-        # Extraer estrictamente el cuerpo en Base64
-        cuerpo = key_plana.split(header)[1].split(footer)[0]
-        # Pulverizar cualquier espacio en blanco, tabulación o basura
-        cuerpo = cuerpo.replace(" ", "").replace("\t", "").replace("\"", "").replace("'", "")
-        
-        # Formatear el cuerpo a exactamente 64 caracteres por línea (Estándar PEM estricto)
-        lineas = [cuerpo[i:i+64] for i in range(0, len(cuerpo), 64)]
-        
-        # Ensamblar la llave final
-        return f"{header}\n" + "\n".join(lineas) + f"\n{footer}\n"
-        
-    return key
+def obtener_credenciales(scopes):
+    if "gcp_service_account" in st.secrets:
+        raw_sec = st.secrets["gcp_service_account"]
+        if isinstance(raw_sec, str):
+            creds_dict = json.loads(raw_sec)
+        else:
+            creds_dict = dict(raw_sec)
+
+        if "private_key" in creds_dict:
+            pk = str(creds_dict["private_key"]).strip()
+            
+            if (pk.startswith('"') and pk.endswith('"')) or (pk.startswith("'") and pk.endswith("'")):
+                pk = pk[1:-1].strip()
+            
+            pk = pk.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+            
+            header = "-----BEGIN PRIVATE KEY-----"
+            footer = "-----END PRIVATE KEY-----"
+            
+            if header in pk and footer in pk:
+                start = pk.find(header) + len(header)
+                end = pk.find(footer)
+                cuerpo = pk[start:end].replace(" ", "").replace("\n", "").replace("\t", "").strip()
+                lineas = [cuerpo[i:i+64] for i in range(0, len(cuerpo), 64)]
+                pk = f"{header}\n" + "\n".join(lineas) + f"\n{footer}\n"
+            
+            creds_dict["private_key"] = pk
+
+        return Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    elif os.path.exists("credentials.json"):
+        return Credentials.from_service_account_file("credentials.json", scopes=scopes)
+    else:
+        raise FileNotFoundError("No se encontraron credenciales en Secrets ni en credentials.json")
 
 class GoogleSheetsManager:
     def __init__(self, credentials_path="credentials.json"):
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-        
-        if "gcp_service_account" in st.secrets:
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            if "private_key" in creds_dict:
-                creds_dict["private_key"] = reconstruir_llave_pem(creds_dict["private_key"])
-                
-            self.creds = Credentials.from_service_account_info(
-                creds_dict, 
-                scopes=scopes
-            )
-        elif os.path.exists(credentials_path):
-            self.creds = Credentials.from_service_account_file(
-                credentials_path, 
-                scopes=scopes
-            )
-        else:
-            raise FileNotFoundError("No se encontraron credenciales válidas en Secrets ni en credentials.json")
-
+        self.creds = obtener_credenciales(scopes)
         self.service = build("sheets", "v4", credentials=self.creds)
 
     def agregar_reserva(self, spreadsheet_id, datos):
