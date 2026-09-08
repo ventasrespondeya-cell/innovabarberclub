@@ -3,6 +3,14 @@ import streamlit as st
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
+def limpiar_llave_privada(key: str) -> str:
+    if not key:
+        return key
+    key = str(key).strip()
+    if (key.startswith('"') and key.endswith('"')) or (key.startswith("'") and key.endswith("'")):
+        key = key[1:-1]
+    return key.replace("\\n", "\n").strip()
+
 class GoogleSheetsManager:
     def __init__(self, credentials_path="credentials.json"):
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -10,7 +18,7 @@ class GoogleSheetsManager:
         if "gcp_service_account" in st.secrets:
             creds_dict = dict(st.secrets["gcp_service_account"])
             if "private_key" in creds_dict:
-                creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+                creds_dict["private_key"] = limpiar_llave_privada(creds_dict["private_key"])
                 
             self.creds = Credentials.from_service_account_info(
                 creds_dict, 
